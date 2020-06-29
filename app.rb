@@ -7,42 +7,57 @@ require 'nokogiri'
 
 class PageParser
   def initialize(link)
-    @web_page = Curl.get(link)
+    @web_page = link
+    @all_products_urls = []
   end
-
-  # http = Curl.get('https://www.petsonic.com/snacks-huesos-para-perros/') do |http|
-  #   http.headers['User-agent'] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36"
-  # end
 
   def parse
     puts "Parsing started:"
-    html = Nokogiri::HTML(@web_page.body_str)
+    find_all_category_pages
 
-    
-    products = []
-    product_urls(html).each do |page|
-      puts "Getting CURL object from #{page}"
-      products << Curl.get(page)
-    end
-    puts "Done"
+    # product_urls(html)
+    puts @all_products_urls.length
+    # products = []
+    # product_urls(html).each do |page|
+    #   puts "Getting CURL object from #{page}"
+    #   products << Curl.get(page)
+    # end
+    # puts "Done"
 
-    parse_products(products)
+    # parse_products(products)
     puts "Parsing successfully ended"
+  end
+
+  def find_all_category_pages
+    pagination_urls = []
+    i = 1
+    # category_page = Curl.get(@web_page)
+    # pagination_urls << Nokogiri::HTML(category_page.body_str)
+
+    pagination_urls << Curl.get(@web_page)
+
+    while pagination_curl.response_code == 200
+      pagination_url = @web_page + "?p=#{i}"
+      pagination_curl = Curl.get(pagination_url)
+      pagination_urls << pagination_curl
+      binding.pry
+      i += 1
+    end
+      puts pagination_urls
   end
 
   # находим URL всех продуктов выбранной категории и сохраняем их в массиве result
   def product_urls(html)
-    result = []
     puts "Finding products URLs"
     html.xpath("//*[@id='product_list']/li[*]").each do |node|
       sections_html = Nokogiri::HTML(node.inner_html)
       html_a_tags = sections_html.xpath("//*/div[1]/div[2]/div[2]/div[1]/h2/a")
       product_link = html_a_tags.attribute("href").value
       puts "Product found - #{product_link}"
-      result << product_link
+      @all_products_urls << product_link
     end
+    puts @all_products_urls.length
     puts "Done"
-    result
   end
 
   def parse_products(products)
