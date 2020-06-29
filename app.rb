@@ -2,9 +2,6 @@ require 'rubygems'
 require 'bundler/setup'
 Bundler.require(:default)
 
-require 'curb'
-require 'nokogiri'
-
 class PageParser
   def initialize(link)
     @web_page = link
@@ -13,27 +10,17 @@ class PageParser
 
   def parse
     puts "Parsing started:"
-
     product_urls(find_all_category_pages)
-
-
     puts "Find #{@all_products_urls.length} product pages"
-    # products = []
-    # product_urls(find_all_category_pages).each do |page|
-    #   puts "Getting CURL object from #{page}"
-    #   products << Curl.get(page)
-    # end
-    # puts "Done"
-
-    # parse_products(products)
+    parse_products(@all_products_urls)
     puts "Parsing successfully ended"
   end
 
+  # находим URL всех страниц пагинации категории
   def find_all_category_pages
     puts "Finding pagination pages"
     pagination_urls = []
     i = 2
-
     pagination_urls << @web_page
     page_url = @web_page + "?p=#{i}"
 
@@ -41,14 +28,14 @@ class PageParser
       pagination_urls << page_url
       puts "Found #{i} category page"
       i += 1
-
       page_url = @web_page + "?p=#{i}"
     end
+
     puts "Done"
     pagination_urls
   end
 
-  # находим URL всех продуктов выбранной категории и сохраняем их в массиве result
+  # находим URL всех продуктов выбранной категории и сохраняем их в массиве all_products_urls
   def product_urls(pagination_pages)
     puts "Finding products URLs"
     pagination_pages.each do |html|
@@ -65,18 +52,20 @@ class PageParser
     puts "Done"
   end
 
+  # парсим все продукты и сохраняем нужные данные в массиве result
   def parse_products(products)
     result = []
 
     puts "Products pages parsing started:"
     products.each do |product|
       puts "Parsing #{product} page"
-      product_html = Nokogiri::HTML(product.body_str)
+      product_curl = Curl.get(product)
+      product_html = Nokogiri::HTML(product_curl.body_str)
       title = product_html.xpath("//*[@id='center_column']/div/div[2]/div[2]/div[1]/div[2]/h1").text
       image = product_html.xpath("//*[@id='bigpic']").attribute("src").value
       # price = product_html.xpath("//*[@id='attributes']/fieldset/div/ul")
       result << [title, image]
-
+      binding.pry
     end
     result
     puts "Done"
