@@ -10,9 +10,10 @@ class PageParser
 
   def parse
     puts "Parsing started:"
-    product_urls(find_all_category_pages)
-    puts "Find #{@all_products_urls.length} product pages"
-    parse_products(@all_products_urls)
+    # product_urls(find_all_category_pages) # раскомменти эту строку для проверки всего парсера
+    # puts "Find #{@all_products_urls.length} product pages" # раскомменти эту строку для проверки всего парсера
+    # parse_products(@all_products_urls) # раскомменти эту строку для проверки всего парсера
+    parse_products(['https://www.petsonic.com/pedigree-dentastix-5-10-kg-sticks-dentales-para-perros.html']) # закомменти
     puts "Parsing successfully ended"
   end
 
@@ -36,9 +37,9 @@ class PageParser
   end
 
   # находим URL всех продуктов выбранной категории и сохраняем их в массиве all_products_urls
-  def product_urls(pagination_pages)
+  def product_urls(pagination_urls)
     puts "Finding products URLs"
-    pagination_pages.each do |html|
+    pagination_urls.each do |html|
       curl_page = Curl.get(html)
       parsed_page = Nokogiri::HTML(curl_page.body_str)
       parsed_page.xpath("//*[@id='product_list']/li[*]").each do |node|
@@ -59,16 +60,43 @@ class PageParser
     puts "Products pages parsing started:"
     products.each do |product|
       puts "Parsing #{product} page"
+      # надо в процессе парсинга страницы товаров проверить наличие вариаций товаров, 
+      # сгенерить их урлы и пропарсить эти вариации сразу после парсинга первой вариации товара
       product_curl = Curl.get(product)
-      product_html = Nokogiri::HTML(product_curl.body_str)
-      title = product_html.xpath("//*[@id='center_column']/div/div[2]/div[2]/div[1]/div[2]/h1").text
-      image = product_html.xpath("//*[@id='bigpic']").attribute("src").value
-      # price = product_html.xpath("//*[@id='attributes']/fieldset/div/ul")
-      result << [title, image]
+      parsed_product = Nokogiri::HTML(product_curl.body_str)
+
+      title = find_title(parsed_product)
+      image = find_image(parsed_product)
+      # price = find_price(parsed_product)
       binding.pry
+      result << [title, image]
     end
     result
     puts "Done"
+  end
+
+  private
+
+  def find_title(parsed_product)
+    title = parsed_product.xpath("//*/div/div[2]/div[2]/div[1]/div[2]/h1").text
+    i = 1
+
+    checkbox = parsed_product.xpath("//*[@id='attributes']/fieldset/div/ul/li[#{i}]")
+    while checkbox.inner_html.include?('checked')
+      variety = parsed_product.xpath("//*[@id='attributes']/fieldset/div/ul/li[#{i}]/label/span[1]")
+      i += 1
+      checkbox = parsed_product.xpath("//*[@id='attributes']/fieldset/div/ul/li[#{i}]")
+    end
+    full_title = title + " - #{variety.text}"
+  end
+
+  def find_image(parsed_product)
+    parsed_product.xpath("//*[@id='bigpic']").attribute("src").value
+  end
+
+  def find_price(parsed_product)
+    parsed_product.xpath("//*[@id='attributes']/fieldset/div/ul")
+
   end
 
 end
