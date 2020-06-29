@@ -13,12 +13,14 @@ class PageParser
 
   def parse
     puts "Parsing started:"
-    find_all_category_pages
+  
 
-    # product_urls(html)
-    puts @all_products_urls.length
+    product_urls(find_all_category_pages)
+
+
+    # puts @all_products_urls.length
     # products = []
-    # product_urls(html).each do |page|
+    # product_urls(find_all_category_pages).each do |page|
     #   puts "Getting CURL object from #{page}"
     #   products << Curl.get(page)
     # end
@@ -29,34 +31,38 @@ class PageParser
   end
 
   def find_all_category_pages
-    pagination_urls = []
-    i = 1
-    # category_page = Curl.get(@web_page)
-    # pagination_urls << Nokogiri::HTML(category_page.body_str)
+    puts "Finding pagination pages"
+    pagination_pages = []
+    i = 2
 
-    pagination_urls << Curl.get(@web_page)
+    pagination_pages << Curl.get(@web_page)
+    pagination_url = @web_page + "?p=#{i}"
+    pagination_curl = Curl.get(pagination_url)
 
-    while pagination_curl.response_code == 200
-      pagination_url = @web_page + "?p=#{i}"
-      pagination_curl = Curl.get(pagination_url)
-      pagination_urls << pagination_curl
-      binding.pry
+    while pagination_curl.response_code == 200 do
+      pagination_pages << pagination_curl
+      puts "Found #{i} category page"
       i += 1
+      Curl.get(@web_page + "?p=#{i}")
     end
-      puts pagination_urls
+    puts "Done"
+    pagination_pages
   end
 
   # находим URL всех продуктов выбранной категории и сохраняем их в массиве result
-  def product_urls(html)
+  def product_urls(pagination_pages)
     puts "Finding products URLs"
-    html.xpath("//*[@id='product_list']/li[*]").each do |node|
-      sections_html = Nokogiri::HTML(node.inner_html)
-      html_a_tags = sections_html.xpath("//*/div[1]/div[2]/div[2]/div[1]/h2/a")
-      product_link = html_a_tags.attribute("href").value
-      puts "Product found - #{product_link}"
-      @all_products_urls << product_link
+    pagination_pages.each do |html|
+      parsed_page = Nokogiri::HTML(html.body_str)
+      parsed_page.xpath("//*[@id='product_list']/li[*]").each do |node|
+        sections_html = Nokogiri::HTML(node.inner_html)
+        html_a_tags = sections_html.xpath("//*/div[1]/div[2]/div[2]/div[1]/h2/a")
+        product_link = html_a_tags.attribute("href").value
+        puts "Product found - #{product_link}"
+        @all_products_urls << product_link
+      end
+      puts @all_products_urls.length
     end
-    puts @all_products_urls.length
     puts "Done"
   end
 
