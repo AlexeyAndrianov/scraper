@@ -13,20 +13,18 @@ class PageParser
   def parse
     puts "Parsing started:"
 
-    # рабочий код скрипта. Нужно закомментить если надо проверить парсинг отдельных страниц товаров
-    product_urls(find_all_category_pages)
-    puts "Found #{@all_products_urls.length} product pages"
-    result = parse_products(@all_products_urls)
+    # # рабочий код скрипта. Нужно закомментить если надо проверить парсинг отдельных страниц товаров
+    # product_urls(find_all_category_pages)
+    # puts "Found #{@all_products_urls.length} product pages"
+    # result = parse_products(@all_products_urls)
 
-    # # проблемные страницы для проверки парсинга мультистраниц.
-    # # Нужно сделать так, чтобы все они и их разновидности нормально парсились:
-    # parse_products(['https://www.petsonic.com/purina-pro-plan-adventuros-strips-venado-para-perros.html'])
-    # parse_products(['https://www.petsonic.com/purina-pro-plan-adventuros-mini-sticks-bufalo-para-perros.html'])
-    # parse_products(['https://www.petsonic.com/pedigree-dentastix-5-10-kg-sticks-dentales-para-perros.html'])
-    # parse_products(['https://www.petsonic.com/siete-anos-snack.html'])
-    # parse_products(['https://www.petsonic.com/purina-pro-plan-adventuros-sticks-bufalo-para-perros.html'])
+    # проблемные страницы для проверки парсинга мультистраниц.
+    # Нужно сделать так, чтобы все они и их разновидности нормально парсились:
+    parse_products(['https://www.petsonic.com/pedigree-dentastix-5-10-kg-sticks-dentales-para-perros.html']) # 3 товара у одной фасовки
+    parse_products(['https://www.petsonic.com/purina-pro-plan-adventuros-sticks-bufalo-para-perros.html']) # 2 фасовки
+    parse_products(['https://www.petsonic.com/purina-pro-plan-snack-dentalife-mini-para-perros.html']) # разные картинки
 
-    write_to_csv(result)
+    # write_to_csv(result)
     puts "Parsing successfully ended"
   end
 
@@ -91,72 +89,65 @@ class PageParser
       product_curl = Curl.get(url)
       parsed_product = Nokogiri::HTML(product_curl.body_str)
 
-      # check_product_page_type
 
-      # check_fieldsets(parsed_product).each do |fieldset|
+      find_multiproduct_urls(parsed_product, url)
+
+
+      # title = find_title(parsed_product)
+      # image = find_image(parsed_product)
+      # price = find_price(parsed_product)
+
+      # result << [title, image, price]
+
+      # fieldsets = check_fieldsets(parsed_product)
+
+      # if fieldsets.count > 1
+      #   fieldsets.delete(fieldsets[0]) # удаляем первую разновидность товара, 
+      #                                  #т.к. мы её уже пропарсили и добавили в result
+      # end
+
+      # fieldsets.each do |fieldset|
       #   find_multiproduct_urls(fieldset, url)
       # end
 
-      title = find_title(parsed_product)
-      image = find_image(parsed_product)
-      price = find_price(parsed_product)
 
-      result << [title, image, price]
     end
     puts "Done"
     result
   end
 
 
+
   private
 
-  def check_product_page_type
-
-  end
-
-  def find_multiproduct_urls(fieldset, url)
-
+  # этот метод работает и генерит урлы нормально. Но от этого нет смысла, можно попробовать
+  # переделать таким образом чтобы на выходе иметь массивы с именем, пикчей и ценой
+  # проблема только в том, что хз как получить нужную пикчу для товара, БЛЯ!
+  # ПО ФАКТУ ОСТАЛОСЬ ТОЛЬКО ПРИДУМАТЬ КАК ВЫДРАТЬ УРЛ НУЖНОЙ ПИКЧИ, ЁБА
+  # потом просто нужно будет вызвать метод flatten на итоговом массиве в методе parse_products
+  def find_multiproduct_urls(parsed_product, url)
     puts "Finding URLs product variations "
     multiproduct_urls = []
+    fieldsets = parsed_product.xpath("//*[@id='attributes']/fieldset[*]")
 
-    i = 2
-    packing_type = fieldset.xpath("//*/fieldset/label").text.gsub(/[[:space:]]/, '')
-    binding.pry 
-    # while i <= fieldset.xpath("//*[@id='attributes']/fieldset/div/ul/li[*]").count
-    #   html_section = fieldset.xpath("//*[@id='attributes']/fieldset/div/ul/li[#{i}]")
-    #   multiproduct_value = html_section.to_html.match(/value="(?<value>\d+)"/)[:value]
-    #   multiproduct_name = html_section.xpath("//*/fieldset/div/ul/li[#{i}]/label/span[1]").text
+    fieldsets.each do |fieldset|
+      product_group = Nokogiri::HTML(fieldset.inner_html)
+      packing_type = product_group.text.match(/(?<pack>\w+)/)[:pack]
 
-    #   multiproduct_name = multiproduct_name.gsub(/[()]/, "").gsub(/\s+/,"-")
+      product_group.xpath("//*/div/ul/li[*]").each do |node|
+        multiproduct_value = node.to_html.match(/value="(?<value>\d+)"/)[:value]
+        multiproduct_name = node.to_html.match(/(?<=important">).*?(?=<\/span>)/).to_s
+        multiproduct_name = multiproduct_name.gsub(/[().]/, "").gsub(/\s+/,"_")
+        multiproduct_url = url + "#/#{multiproduct_value}-#{packing_type}-#{multiproduct_name}"
+        multiproduct_urls << multiproduct_url.downcase
+      end
 
-    #   multiproduct_url = url + "#/#{multiproduct_value}-#{packing_type}-#{multiproduct_name}"
-    #   multiproduct_urls << multiproduct_url.downcase
-    #   i += 1
-    # end
+    end
 
-    # puts "Found #{multiproduct_urls.length} additional product variations"
-
+    puts "Found #{multiproduct_urls.length} additional product variations"
+    binding.pry
     multiproduct_urls
   end
-
-  def check_fieldsets(parsed_product)
-    parsed_product.xpath("//*[@id='attributes']/fieldset[*]")
-  end
-
-  def find_multuproduct_title(parsed_product)
-    title = parsed_product.xpath("//*/div/div[2]/div[2]/div[1]/div[2]/h1").text
-    i = 1
-
-    checkbox = parsed_product.xpath("//*[@id='attributes']/fieldset/div/ul/li[#{i}]")
-    while checkbox.inner_html.include?('checked')
-      variety = parsed_product.xpath("//*[@id='attributes']/fieldset/div/ul/li[#{i}]/label/span[1]")
-      i += 1
-      checkbox = parsed_product.xpath("//*[@id='attributes']/fieldset/div/ul/li[#{i}]")
-    end
-    binding.pry
-    full_title = title + " - #{variety.text}"
-  end
-
 
   def find_title(parsed_product)
     title = parsed_product.xpath("//*/div/div[2]/div[2]/div[1]/div[2]/h1").text
