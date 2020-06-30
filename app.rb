@@ -4,6 +4,7 @@ require 'csv'
 Bundler.require(:default)
 
 class PageParser
+    # этот метод можно рефакторить
   def initialize(link)
     @web_page = link
     @all_products_urls = []
@@ -29,6 +30,7 @@ class PageParser
     puts "Parsing successfully ended"
   end
 
+    # этот метод можно рефакторить
   def write_to_csv(result)
     puts "Writing in CSV"
     CSV.open('ruby-scrapp.csv', 'wb') do |csv|
@@ -41,6 +43,7 @@ class PageParser
   end
 
   # находим URL всех страниц пагинации категории
+    # этот метод можно рефакторить
   def find_all_category_pages
     puts "Finding pagination pages"
     pagination_urls = []
@@ -60,6 +63,7 @@ class PageParser
   end
 
   # находим URL всех продуктов выбранной категории и сохраняем их в массиве all_products_urls
+    # этот метод можно рефакторить
   def product_urls(pagination_urls)
     puts "Finding products URLs"
     pagination_urls.each do |html|
