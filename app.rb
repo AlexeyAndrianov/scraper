@@ -60,22 +60,46 @@ class PageParser
     puts "Products pages parsing started:"
     products.each do |product|
       puts "Parsing #{product} page"
+
       # надо в процессе парсинга страницы товаров проверить наличие вариаций товаров, 
       # сгенерить их урлы и пропарсить эти вариации сразу после парсинга первой вариации товара
+
       product_curl = Curl.get(product)
       parsed_product = Nokogiri::HTML(product_curl.body_str)
+
+      find_multiproduct_urls(parsed_product, product)
 
       title = find_title(parsed_product)
       image = find_image(parsed_product)
       # price = find_price(parsed_product)
-      binding.pry
+
       result << [title, image]
+            binding.pry
     end
     result
     puts "Done"
   end
 
   private
+
+  def find_multiproduct_urls(parsed_product, url)
+    multiproduct_urls = []
+    i = 2
+
+    variety = parsed_product.xpath("//*[@id='attributes']/fieldset/label").text
+    # multiproduct = parsed_product.xpath("//*[@id='comb_2884_group_10']").attribute("value").value
+
+    while i < parsed_product.xpath("//*[@id='attributes']/fieldset/div/ul/li[*]").count
+      html_section = parsed_product.xpath("//*[@id='attributes']/fieldset/div/ul/li[#{i}]")
+            binding.pry
+      multiproduct_value = html_section.attribute(name = "value")
+      multiproduct_name = html_section.xpath("//*/fieldset/div/ul/li[#{i}]/label/span[1]").text
+      binding.pry
+      i += 1
+    end
+
+
+  end
 
   def find_title(parsed_product)
     title = parsed_product.xpath("//*/div/div[2]/div[2]/div[1]/div[2]/h1").text
