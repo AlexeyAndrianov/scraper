@@ -6,8 +6,8 @@ require 'csv'
 Bundler.require(:default)
 
 class PageParser
-  def initialize(url, file_name)
-    @web_page = url
+  def initialize(web_page, file_name)
+    @web_page = web_page
     @file_name = file_name
     @all_products_urls = []
     @result = []
